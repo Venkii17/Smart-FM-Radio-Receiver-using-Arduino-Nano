@@ -1,245 +1,330 @@
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+# 📻 Smart FM Radio Receiver Using Arduino Nano
 
-// TEA5767 I2C address
-#define TEA5767_ADDRESS 0x60
+> A portable smart FM radio receiver built using Arduino Nano with Bluetooth control, LCD display, manual tuning, and digital FM reception.
 
-// Initialize the I2C LCD (Address: 0x27, 16 columns, 2 rows)
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+![Arduino](https://img.shields.io/badge/Arduino-Nano-blue)
+![Embedded](https://img.shields.io/badge/Embedded-Systems-success)
+![Bluetooth](https://img.shields.io/badge/HC--05-Bluetooth-blueviolet)
+![FM](https://img.shields.io/badge/FM-TEA5767-orange)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-// LED pins
-const int yellowLED = 2; // Frequency change LED
-const int greenLED = 3;  // Volume change LED
+---
 
-// Define an array of 10 radio stations with name and frequency
-struct Station {
-  String name;
-  float frequency;
-};
+# 📖 Overview
 
-Station stations[10] = {
-  {"Station 1", 88.0},
-  {"Station 2", 90.5},
-  {"Station 3", 92.7},
-  {"Station 4", 94.3},
-  {"Station 5", 96.0},
-  {"Station 6", 98.1},
-  {"Station 7", 100.5},
-  {"Station 8", 102.3},
-  {"Station 9", 104.7},
-  {"Station 10", 106.9}
-};
+Traditional FM radios offer simple functionality but lack modern user interaction and remote control capabilities. This project presents a Smart FM Radio Receiver built using an Arduino Nano that combines conventional FM reception with digital controls.
 
-int currentStation = 4;  // Start with the station at index 4 (Frequency: 96.0)
-float frequency = 96.0;  // Default frequency
-int volume = 8;          // Volume level (range: 0 to 15)
+The system allows users to tune FM stations manually using potentiometers or remotely using a Bluetooth-enabled mobile application. A 16×2 I2C LCD displays the selected frequency, station information, and volume level, providing a user-friendly interface.
 
-void setup() {
-  // Initialize Serial Monitor
-  Serial.begin(9600);
+The project demonstrates the integration of embedded systems, wireless communication, and analog audio processing in a compact and portable FM receiver.
 
-  // Initialize the LCD
-  lcd.init();
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("FM Radio");
-  lcd.setCursor(0, 1);
-  lcd.print("Initializing...");
-  delay(2000);
+---
 
-  // Initialize I2C
-  Wire.begin();
+# 🎯 Objectives
 
-  // Initialize LEDs
-  pinMode(yellowLED, OUTPUT);
-  pinMode(greenLED, OUTPUT);
+- Design a portable FM radio receiver
+- Receive stations between **87 MHz and 108 MHz**
+- Display station information on LCD
+- Control tuning and volume using potentiometers
+- Enable Bluetooth-based remote control
+- Learn Arduino-based embedded system design
 
-  // Set initial station
-  setFrequency(stations[currentStation].frequency);
+---
 
-  // Update display with the current station
-  updateDisplay();
-}
+# ✨ Features
 
-void loop() {
-  // Potentiometer for preset stations
-  int potValue = analogRead(A0);  // Read the potentiometer value (0-1023)
-  int newStation = map(potValue, 0, 1023, 0, 9);
+✔ Digital FM reception using TEA5767
 
-  if (newStation != currentStation) {
-    currentStation = newStation;
-    frequency = stations[currentStation].frequency;
-    setFrequency(frequency);
-    updateDisplay();
-    blinkLED(yellowLED);
-  }
+✔ Bluetooth remote control
 
-  // Bluetooth commands for fine-tuning and volume
-  if (Serial.available()) {
-    char command = Serial.read();
+✔ Manual tuning using potentiometer
 
-    if (command == '+') {
-      frequency += 0.1; // Increase frequency
-      setFrequency(frequency);  // Do not call syncStationWithFrequency here===ppppppppppp-
-      blinkLED(yellowLED);
-    } else if (command == '-') {
-      frequency -= 0.1; // Decrease frequency
-      setFrequency(frequency);  // Do not call syncStationWithFrequency here
-      blinkLED(yellowLED);
-    } else if (command == 'v') {
-      volume = min(volume + 1, 15); // Increase volume
-      setVolume(volume);
-      showTemporaryVolume();
-      blinkLED(greenLED);
-    } else if (command == 'd') {
-      volume = max(volume - 1, 0); // Decrease volume
-      setVolume(volume);
-      showTemporaryVolume();
-      blinkLED(greenLED);
-    }
+✔ Volume control
 
-    updateDisplay(); // Update display with new values
-  }
+✔ LCD display
 
-  delay(200); // Add delay for stability
-}
+✔ Portable design
 
-void setFrequency(float freq) {
-  uint8_t frequencyB[5];
-  uint16_t freqB = (freq * 1000000 + 225000) / 32768;
+✔ Arduino Nano based
 
-  frequencyB[0] = freqB >> 8;
-  frequencyB[1] = freqB & 0xFF;
-  frequencyB[2] = 0xB0; // High side injection
-  frequencyB[3] = 0x10; // Stereo
-  frequencyB[4] = 0x00;
+✔ High-quality audio output using LM386 amplifier
 
-  Wire.beginTransmission(TEA5767_ADDRESS);
-  for (int i = 0; i < 5; i++) {
-    Wire.write(frequencyB[i]);
-  }
-  Wire.endTransmission();
-  Serial.print("Frequency set to: ");
-  Serial.println(freq, 1);
-}
+---
 
-void setVolume(int vol) {
-  Wire.beginTransmission(TEA5767_ADDRESS);
-  Wire.write(0xFF); // Fake bytes to simulate volume control
-  Wire.write(vol);
-  Wire.endTransmission();
-  Serial.print("Volume set to: ");
-  Serial.println(vol);
-}
+# 🏗 Block Diagram
 
-void updateDisplay() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(stations[currentStation].name);  // Display station name
-  lcd.setCursor(0, 1);
-  lcd.print("Freq: ");
-  lcd.print(frequency, 1); // Display frequency with 1 decimal
-  lcd.print(" MHz");
-}
+```
+             FM Antenna
+                  │
+                  ▼
+          TEA5767 FM Module
+                  │
+                  ▼
+            Arduino Nano
+        ┌─────────┼──────────┐
+        ▼         ▼          ▼
+   HC-05      LCD Display   Potentiometers
+ Bluetooth                 Frequency/Volume
+        │
+        ▼
+    LM386 Amplifier
+        │
+        ▼
+      Speaker
+```
 
-void showTemporaryVolume() {
-  // Display the volume level for a short duration
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Volume: ");
-  lcd.print(volume);
-  delay(1000); // Show volume for 1 second
-  updateDisplay(); // Revert to the main display
-}
+---
 
-void blinkLED(int ledPin) {
-  digitalWrite(ledPin, HIGH); // Turn on the LED
-  delay(200);                 // Wait for 200 ms
-  digitalWrite(ledPin, LOW);  // Turn off the LED
-}
+# 🧠 Working Principle
 
-void syncStationWithFrequency() {
-  // This function is not called when fine-tuning the frequency anymore.
-  // Now it only matches the station when explicitly changing the station via potentiometer or Bluetooth.
-}
-Icons.c
+1. The TEA5767 module receives FM radio signals through an antenna.
 
-#if defined(__AVR__)
-    #include <avr/pgmspace.h>
-    #define imagedatatype const uint8_t
-#elif defined(__PIC32MX__)
-    #define PROGMEM
-    #define imagedatatype const unsigned char
-#elif defined(__arm__)
-    #define PROGMEM
-    #define imagedatatype const unsigned char
-#endif
+2. Arduino Nano communicates with the TEA5767 using the I2C protocol.
 
-imagedatatype signal5[] PROGMEM={
-0xC1, 0xC3, 0xC5, 0xF9, 0xC5, 0xC3, 0xC1, 0xC0, 0xE0, 0xC0, 0xF0, 0xC0, 0xF8, 0xC0, 0xFC, 0xC0,   // 0x0010 (16) pixels
-0xFE, 
-};
+3. Users can tune stations using:
 
-imagedatatype signal4[] PROGMEM={
-0xC1, 0xC3, 0xC5, 0xF9, 0xC5, 0xC3, 0xC1, 0xC0, 0xE0, 0xC0, 0xF0, 0xC0, 0xF8, 0xC0, 0xFC, 0xC0,   // 0x0010 (16) pixels
-0xC0, 
-};
+- Potentiometer
+- Bluetooth mobile application
 
-imagedatatype signal3[] PROGMEM={
-0xC1, 0xC3, 0xC5, 0xF9, 0xC5, 0xC3, 0xC1, 0xC0, 0xE0, 0xC0, 0xF0, 0xC0, 0xF8, 0xC0, 0xC0, 0xC0,   // 0x0010 (16) pixels
-0xC0, 
-};
+4. Another potentiometer controls audio volume.
 
-imagedatatype signal2[] PROGMEM={
-0xC1, 0xC3, 0xC5, 0xF9, 0xC5, 0xC3, 0xC1, 0xC0, 0xE0, 0xC0, 0xF0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0,   // 0x0010 (16) pixels
-0xC0, 
-};
+5. Frequency, station details, and volume are displayed on the 16×2 I2C LCD.
 
-imagedatatype signal1[] PROGMEM={
-0xC1, 0xC3, 0xC5, 0xF9, 0xC5, 0xC3, 0xC1, 0xC0, 0xE0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0,   // 0x0010 (16) pixels
-0xC0, 
-};
- 
-Splash.c
+6. Audio output is amplified using the LM386 audio amplifier.
 
-#include <avr/pgmspace.h>
+7. The amplified signal is played through the speaker.
 
-const unsigned char splash []PROGMEM  = {
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x80, 0x80, 0x80, 0xC0, 0xC0, 0x40,
-0x60, 0x60, 0x20, 0x20, 0x30, 0x10, 0x10, 0x1C, 0x3E, 0x3E, 0x3E, 0x1C, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x80,
-0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xE0, 0xF0, 0xF0, 0xF0, 0xF0, 0xF0, 0x98,
-0x98, 0x98, 0x8C, 0x8C, 0x8C, 0x8C, 0x86, 0x86, 0x86, 0x83, 0x83, 0x83, 0x81, 0x81, 0x81, 0x80,
-0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xE3, 0xE3, 0xE3, 0xE3,
-0x03, 0x03, 0xE0, 0xFF, 0xFF, 0x7F, 0x7F, 0xFC, 0xE0, 0xC0, 0xF8, 0xFF, 0x1F, 0xFF, 0xFF, 0xFC,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFC, 0xFF, 0xFF, 0xFF, 0xFF, 0x1F, 0x0F,
-0x0F, 0x0F, 0x1F, 0xBF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F,
-0x3F, 0x3F, 0x1F, 0x1F, 0x0F, 0x4F, 0x4F, 0x4F, 0x4F, 0x4F, 0x0F, 0x1F, 0x1F, 0x3F, 0x7F, 0xFF,
-0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC, 0x00, 0x00, 0x80, 0x80, 0x80, 0x80, 0x80, 0x0F, 0x0F, 0x0F,
-0x00, 0x00, 0x80, 0x80, 0x00, 0x00, 0x0F, 0x0F, 0x8F, 0x80, 0x80, 0x87, 0x0F, 0x0F, 0x0F, 0x00,
-0x80, 0x8F, 0x0F, 0x0F, 0x00, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF,
-0xFF, 0xFF, 0x3F, 0x1E, 0x1E, 0x1E, 0x1E, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-0xFF, 0x9F, 0x01, 0x00, 0x24, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26, 0x26,
-0x26, 0x24, 0x20, 0x00, 0x03, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x3F, 0x3F, 0x0D, 0x1D,
-0x3F, 0x27, 0x00, 0x20, 0x38, 0x1F, 0x1B, 0x1F, 0x3E, 0x38, 0x00, 0x00, 0x3F, 0x3F, 0x31, 0x31,
-0x1F, 0x0E, 0x00, 0x00, 0x3F, 0x3F, 0x00, 0x0E, 0x1F, 0x31, 0x31, 0x31, 0x31, 0x1F, 0x0E, 0x00,
-0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFC, 0xFC, 0xFC, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC, 0xF0, 0xE1, 0xE3, 0xC3, 0x83, 0x93, 0x93, 0x93, 0x93,
-0x93, 0x93, 0x83, 0xC3, 0xC3, 0xE3, 0xF0, 0xF8, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x40, 0xC0, 0x00, 0x00, 0xC0, 0xC0, 0x00, 0x00, 0x00, 0x60, 0xE0, 0xE0, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0xC0, 0x60, 0x60, 0x60, 0xC0, 0x80, 0x00, 0x00, 0x00,
-0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x07, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F,
-0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F,
-0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F,
-0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x0F, 0x0E, 0x07, 0x00, 0x00, 0x00, 0x00,
-0x00, 0x0F, 0x0F, 0x00, 0x00, 0x0C, 0x0C, 0x00, 0x00, 0x00, 0x03, 0x07, 0x0C, 0x0C, 0x0C, 0x07,
-0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-};
+---
 
+# 🛠 Hardware Components
 
+| Component | Purpose |
+|------------|----------|
+| Arduino Nano | Main Controller |
+| TEA5767 FM Module | FM Reception |
+| HC-05 Bluetooth | Wireless Control |
+| LM386 Audio Amplifier | Audio Amplification |
+| 16×2 I2C LCD | Display |
+| 10K Potentiometers | Frequency & Volume Control |
+| Speaker | Audio Output |
+| Breadboard | Circuit Assembly |
+| Power Supply | System Power |
 
+---
 
-# Smart-FM-Radio-Receiver-using-Arduino-Nano
+# 💻 Software Used
+
+- Arduino IDE
+- Embedded C
+- Electronics Bluetooth Controller App
+
+---
+
+# 📂 Project Structure
+
+```
+Smart-FM-Radio-Receiver-Using-Arduino-Nano
+│
+├── README.md
+├── LICENSE
+│
+├── docs
+│   ├── Project_Report.pdf
+│   └── Presentation.pptx
+│
+├── images
+│   ├── prototype.jpg
+│   ├── hardware.jpg
+│   ├── block_diagram.png
+│   ├── flowchart.png
+│   ├── circuit_diagram.png
+│   ├── lcd_output.jpg
+│   └── bluetooth_control.jpg
+│
+├── hardware
+│   ├── Schematic.pdf
+│   ├── Wiring_Diagram.png
+│   └── Components.pdf
+│
+├── software
+│   ├── Arduino
+│   │      main.ino
+│   └── Libraries
+│
+├── simulation
+│   └── wokwi_project
+│
+└── results
+```
+
+---
+
+# 📷 Project Images
+
+## Prototype
+
+(Add image here)
+
+---
+
+## Hardware Setup
+
+(Add image here)
+
+---
+
+## Circuit Diagram
+
+(Add image here)
+
+---
+
+## Block Diagram
+
+(Add image here)
+
+---
+
+## Flowchart
+
+(Add image here)
+
+---
+
+## LCD Output
+
+(Add image here)
+
+---
+
+## Bluetooth Control
+
+(Add image here)
+
+---
+
+# 🚀 Installation
+
+Clone the repository
+
+```bash
+git clone https://github.com/YOUR_USERNAME/Smart-FM-Radio-Receiver-Using-Arduino-Nano.git
+```
+
+Open the project in Arduino IDE.
+
+Install required libraries.
+
+Connect Arduino Nano.
+
+Upload the code.
+
+Power the circuit.
+
+Tune FM stations using potentiometers or Bluetooth.
+
+---
+
+# 📊 Results
+
+The developed system successfully:
+
+- Receives FM radio stations
+- Tunes frequencies accurately
+- Displays station frequency on LCD
+- Supports Bluetooth control
+- Provides clear audio output through LM386 amplifier
+- Allows smooth manual tuning
+
+---
+
+# 📡 Frequency Range
+
+- Minimum Frequency: **87.0 MHz**
+- Maximum Frequency: **108.0 MHz**
+
+---
+
+# 📱 Bluetooth Control
+
+The HC-05 Bluetooth module enables users to:
+
+- Tune stations remotely
+- Adjust volume
+- Control radio using a smartphone
+
+---
+
+# 🌍 Applications
+
+- Educational Projects
+- Embedded Systems Learning
+- FM Receiver Prototype
+- Portable Radio Systems
+- Arduino Learning
+- Wireless Audio Systems
+
+---
+
+# ⚠ Limitations
+
+- Supports FM radio only
+- Bluetooth range is limited
+- Requires strong FM signal
+- No recording functionality
+- Depends on antenna quality
+
+---
+
+# 🔮 Future Scope
+
+- OLED/TFT display
+- Digital volume control
+- Station memory presets
+- Automatic channel scanning
+- SD card music playback
+- Internet radio integration
+- Rechargeable battery support
+- Mobile application with advanced controls
+
+---
+
+# 📄 Documentation
+
+The repository includes:
+
+- Project Report
+- Source Code
+- Circuit Diagram
+- Block Diagram
+- Flowchart
+- Hardware Images
+- Simulation
+- Presentation Slides
+
+---
+
+# 👨‍💻 Team
+
+- Tilak G P
+- Vaishnavi B N
+- Vedamurthy A N
+- **Venkatesh R Shettar**
+
+Guide
+
+Dr. G. S. Sunitha
+
+Department of Electronics & Communication Engineering
+
+Bapuji Institute of Engineering and Technology
+
+---
+
+# 📜 License
+
+This project is released under the MIT License.
+
+---
+
+## ⭐ If you found this project useful, please consider giving it a Star.
